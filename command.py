@@ -3,11 +3,13 @@ import time
 import random
 from commandsender import CommandSender as CS
 from datetime import datetime
+from tracking import Tracker
 
 class Commands: 
     def __init__(self):
         self.errors = []
         self.ComSender = CS()
+        self.tracker_ = Tracker()
 
     def send(self , command , lcd_text): # send the command bt self.ComSender
         try:
@@ -36,6 +38,15 @@ class Commands:
 
     def sleep_mode(self , text): # sleep when it's no use
         return self.send('S' , text)
+    
+    def turn(self , option): # turning left and right
+        if option == 'L':
+            return self.send('L' , lcd_text)
+        elif option == 'R':
+            return self.send('R' , lcd_text)
+        else:
+            print('Invalid option')
+            self.errors.append(f'command / {datetime.now().strftime("%Y-%m-%d %H:%M:%S")} / Invalid option received')
 
     def search(self , lcd_text = None):
         # a command that will be sent to the robot when it is searching for the target
