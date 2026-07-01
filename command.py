@@ -3,13 +3,11 @@ import time
 import random
 from commandsender import CommandSender as CS
 from datetime import datetime
-from tracking import Tracker
 
 class Commands: 
     def __init__(self):
         self.errors = []
         self.ComSender = CS()
-        self.tracker_ = Tracker()
 
     def send(self , command , lcd_text): # send the command bt self.ComSender
         try:
