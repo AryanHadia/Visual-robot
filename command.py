@@ -38,8 +38,28 @@ class Commands:
 
     def sleep_mode(self , text): # sleep when it's no use
         return self.send('S' , text)
+
+    def search_mode(self , lcd_text = None): # turning the servo motor to left and right
+        # turn right 20 deg
+        try:
+            for _ in range(1,10): # turn right 20 deq
+                self.send('R' , lcd_text)
+            self.send('C' , lcd_text) # recentering the servo motor
+            for _ in range(1,10): # turning left for 20 deg
+                self.send('L' , lcd_text)
+            self.send('C' , lcd_text) # recentering the servo motor
+            return True
+        except: # and if it failed
+            return False
     
-    def turn(self , option): # turning left and right
+    def sleep_mode(self , lcd_text): # sleep mode
+        try:
+            self.send(command='S' , lcd_text=lcd_text)
+            return True
+        except:
+            return False
+
+    def turn(self , option , lcd_text = None): # turning left and right
         if option == 'L':
             return self.send('L' , lcd_text)
         elif option == 'R':
