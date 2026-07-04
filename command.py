@@ -36,8 +36,8 @@ class Commands:
             return False
         return True
 
-    def sleep_mode(self , text): # sleep when it's no use
-        return self.send('S' , text)
+    def sleep_mode(self , lcd_text = None): # sleep when it's no use
+        return self.send('S' , lcd_text)
 
     def search_mode(self , lcd_text = None): # turning the servo motor to left and right
         # turn right 20 deg
