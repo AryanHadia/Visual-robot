@@ -9,8 +9,8 @@ from datetime import datetime
 
 class Core: # main core
     def __init__(self):
-        self.receive = Reciver()
         self.commands = Commands()
+        self.receive = Reciver()
         self.tracker = Tracker()
         self.frame_width = 640
         self.frame_height = 480
