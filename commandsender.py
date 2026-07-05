@@ -19,9 +19,12 @@ class CommandSender:
             while self.connection_Attempt < 3:
                 # connect
                 self.socket = socket.socket(socket.AF_INET , socket.SOCK_STREAM)
+                print("Making socket !")
                 self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # allow to reuse the address
+                print("Done")
                 self.socket.bind((self.ip , self.port))
                 self.socket.listen(1)
+                print("listening !")
                 self.conn, addr = self.socket.accept()
                 self.is_connected = True # its connected
                 print(f"connected to {addr}")
@@ -30,16 +33,16 @@ class CommandSender:
         except Exception as e: # if failed to connect
             self.connection_Attempt += 1
             print(f'Failed to connect error: {e}')
-            self.error_log.append(f'Failed to connect error: {e}')
+            self.error_log.append(f'commandsender / Failed to connect error: {e}')
             self.is_connected = False
 
-    def sender(self , command): # command sender
+    def send(self , command): # command sender
         try:
             self.conn.sendall(command.encode()) # send the command to robot
             self.com_saver(command=command)
         except Exception as e:
-            print(f"Failed to send the command. error = {e}")
-            self.error_log.append(f"Failed to send the command. error = {e}")
+            print(f"commandsender / Failed to send the command. error = {e}")
+            self.error_log.append(f"commandsender / Failed to send the command. error = {e}")
            
             if not self.con_check():
                 self.close()
@@ -49,8 +52,8 @@ class CommandSender:
                 self.conn.sendall(command.encode())
                 self.com_saver(command=command)
             except Exception as e:
-                print(f"Failed to send the command. error = {e}")
-                self.error_log.append(f"Failed to send the command. error = {e}")
+                print(f"commandsender / Failed to send the command. error = {e}")
+                self.error_log.append(f"commandsender / Failed to send the command. error = {e}")
                 pass
 
     def com_saver(self , command): # save the command in the txt file
@@ -70,8 +73,8 @@ class CommandSender:
             self.connection_Attempt = 0
             self.is_connected = False
         except Exception as e:
-            print(f"Failed to close the connection. error = {e}")
-            self.error_log.append(f"Failed to close the connection. error = {e}")
+            print(f"commandsender / Failed to close the connection. error = {e}")
+            self.error_log.append(f"commandsender / Failed to close the connection. error = {e}")
             pass
 
     def restart(self): # restart the connection
