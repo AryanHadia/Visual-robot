@@ -2,30 +2,43 @@
 import socket
 import cv2
 import numpy as np
+import time
 
 class Reciver:
     def __init__(self):
         self.data = b""
         self.is_connect = False 
         # host and port
-        HOST = '0.0.0.0'
-        PORT = 5000
-        # socket conmnection
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.host = '0.0.0.0'
+        self.port = 5000
         self.conn = None
-        self.sock.bind((HOST, PORT))
-        # listen for the connection
-        self.listen()
+        # connect
+        con = self.connect()
+        while con == False:
+            con = self.connect()
 
-    def listen(self): # listen for the connection
-        self.sock.listen(1)
-        self.conn, self.addr = self.sock.accept()
-        print(f"Connected from {self.addr}")
-        self.conn.settimeout(10)
-        self.is_connect = True
+    def connect(self): # connection
+        # making socket
+        try:
+            print("making socket !")
+            self.sock = socket.socket(socket.AF_INET , socket.SOCK_STREAM)
+            print("done")
+            self.sock.bind((self.host , self.port))
+            self.sock.listen()
+            print("listening !")
+            self.conn, addr = self.sock.accept()
+            print(f"connected by ({addr})")
+            return True
+        except:
+            print("failed to connect !!")
+            self.conn.close()
+            self.sock.close()
+            time.sleep(4)
+            
 
     def recv(self): # receive the stram part by part
         try:
+            print('try to receive !!')
             while True:
                 # 1. Search for JPEG markers in buffer
                 start = self.data.find(b'\xff\xd8')
