@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from stream_reciver import Reciver
+from stream_reciver import Receiver
 import random
 from command import Commands 
 from tracking import Tracker
@@ -9,8 +9,8 @@ from datetime import datetime
 
 class Core: # main core
     def __init__(self):
+        self.receive = Receiver()
         self.commands = Commands()
-        self.receive = Reciver()
         self.tracker = Tracker()
         self.frame_width = 640
         self.frame_height = 480
