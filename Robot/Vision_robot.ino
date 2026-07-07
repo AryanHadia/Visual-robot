@@ -1,107 +1,132 @@
-int servoPin = 3; // servo pin
-int relayPin = 4; // relay pin its actually a relay to control the servo motor power
-int servoAngle = 90; // servo angle
-int servoSpeed = 10; // servo speed
-#include <Servo.h>
-Servo servo;
+
+int echo = 12;
+int trig = 11 ;
+
+int m1p1 = 3;
+int m1p2 = 5;
+int m2p1 = 6;
+int m2p2 = 9;
+int CL = 4;
+int motor_speed;
+int scan_speed;
+int dist;
 
 
-// 1c2 lcd setup
-#include <LiquidCrystal_I2C.h>
-LiquidCrystal_I2C lcd(0x27, 16, 2);
-
-// LCD setup
-void lcdSetup() {
-  lcd.init();
-  lcd.backlight();
+// geting distance
+int getDistance() {
+    digitalWrite(trig, LOW);
+    delayMicroseconds(2);
+    digitalWrite(trig, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(trig, LOW);
+    
+    long duration = pulseIn(echo, HIGH);
+    int distance = duration * 0.034 / 2;
+    
+    if (distance == 0) distance = 100;
+    if (distance > 100) distance = 100;
+    
+    return distance;
 }
 
-// servo setup
-void servoSetup() {
-  servo.attach(servoPin);
-  servo.write(90);
+
+void setup() { // adruino setup
+    motor_speed = 160;
+    scan_speed = 150;
+    Serial.begin(9600);
+    // pinmodes
+    pinMode(echo, INPUT);
+    pinMode(trig, OUTPUT);
+    pinMode(m1p1, OUTPUT);
+    pinMode(m1p2, OUTPUT);
+    pinMode(m2p1, OUTPUT);
+    pinMode(m2p2, OUTPUT);
+    pinMode(CL, OUTPUT);
+    stop(); // sttopign robot
+    delay(500);
+    Serial.println("READY");   
 }
 
 
-void setup() {
-  // pinmodes
-  pinMode(relayPin, OUTPUT);
-  // put your setup code here, to run once:
-  run_servo();
-  Serial.begin(9600);
-  servoSetup();
-  servo.write(servoAngle);
-  lcdSetup();
-  lcd.clear();
-  lcd.print("Vision Robot");
-  delay(1000);
-}
 
 void loop() {
-    showcommand("listening");
-    if (Serial.available() > 0) { // if there is a command available
-        // receiving two part command in one string
-        String data = Serial.readStringUntil('.');
-        data.trim();
-        int commaIndex = data.indexOf(',');
-        int startIndex = 0;
-        
-        while (commaIndex != -1) {
-          String cmd = data.substring(startIndex, commaIndex);
-          processCommand(cmd.charAt(0)); 
-          startIndex = commaIndex + 1;
-          commaIndex = data.indexOf(',', startIndex);
-        }
-        // last command
-        String lastCmd = data.substring(startIndex);
-        lastCmd.trim();
-        if (lastCmd.length() > 0) {
-          processCommand(lastCmd.charAt(0));
+    dist = getDistance();
+    if (Serial.available() > 0) {
+        char cmd = Serial.read();
+        while (Serial.available()) Serial.read();
+  
+        switch (cmd) {
+            case 'F': forward(); break;
+            case 'B': backward(); break;
+            case 'R': turnRight(); break;
+            case 'L': turnLeft(); break;
+            case 'S': stop(); break;
+            case 'E': scanRight(); break;   
+            case 'W': scanLeft(); break;    
+            case 'N': lightOn(); break;     
+            case 'M': lightOff(); break;    
         }
     }
 }
 
-void processCommand(char cmd) {
-  if (cmd == 'L') {
-    left();
-  } else if (cmd == 'R') {
-    right();
-  } else if (cmd == 'S') {
-    reset_servo();
-  }
+void forward() {
+    if (dist < 20) { //stop
+        return;
+    }
     else {
-      showcommand(cmd);
-    }
+      analogWrite(m1p1, motor_speed);
+      analogWrite(m1p2, 0);
+      analogWrite(m2p1, motor_speed);
+      analogWrite(m2p2, 0);
+    } 
 }
 
-void showcommand(String text) {
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print(text);
-  lcd.print(" ");
+void backward() {
+    analogWrite(m1p1, 0);
+    analogWrite(m1p2, motor_speed);
+    analogWrite(m2p1, 0);
+    analogWrite(m2p2, motor_speed);
 }
 
-void left() {
-  // turning the servo to left only 10 degrees
-  servoAngle = max(servoAngle - 10, 0);
-  servo.write(servoAngle);
-  delay(servoSpeed);
+void stop() {
+    analogWrite(m1p1, 0);
+    analogWrite(m1p2, 0);
+    analogWrite(m2p1, 0);
+    analogWrite(m2p2, 0);
 }
 
-void reset_servo() {
-    servoAngle = 90;
-    servo.write(servoAngle);
-    delay(servoSpeed);
+void turnRight() {
+    analogWrite(m1p1, motor_speed);
+    analogWrite(m1p2, 0);
+    analogWrite(m2p1, 0);
+    analogWrite(m2p2, scan_speed);
 }
 
-void right() {
-  // turning the servo to right only 10 degrees
-  servoAngle = min(servoAngle + 10, 180);
-  servo.write(servoAngle);
-  delay(servoSpeed);
+void turnLeft() {
+    analogWrite(m1p1, 0);
+    analogWrite(m1p2, scan_speed);
+    analogWrite(m2p1, motor_speed);
+    analogWrite(m2p2, 0);
 }
 
+void scanLeft() {
+    analogWrite(m1p1, 0);
+    analogWrite(m1p2, 0);
+    analogWrite(m2p1, scan_speed);
+    analogWrite(m2p2, 0);
+}
 
-void run_servo() {
-    digitalWrite(relayPin, HIGH);
+void scanRight() {
+    analogWrite(m1p1, scan_speed);
+    analogWrite(m1p2, 0);
+    analogWrite(m2p1, 0);
+    analogWrite(m2p2, 0);
+}
+
+void lightOn() {
+    digitalWrite(CL, HIGH);
+}
+
+void lightOff() {
+    digitalWrite(CL, LOW);
 }
