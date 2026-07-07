@@ -13,9 +13,10 @@ class RunRobot:
         self.Camera_Device = '/dev/video0' # camera device path
         self.PYTHON_VENV = '/home/aryan/myenv/bin/python3'
         self.stream_port = 5000
+        self.first_connect = False
 
         # command receiver
-        self.COMMAND_RECEIVER_PATH = '/home/aryan/c_receiver.py'
+        self.COMMAND_RECEIVER_PATH = '/home/aryan/visual/command_receiver.py'
 
         # process
         self.cr_process = []
@@ -59,18 +60,20 @@ class RunRobot:
         print("stream started")
         self.is_streaming = True
         # command receiver
+        print("trying to run command receiver")
         cr_cmd = f"{self.PYTHON_VENV} {self.COMMAND_RECEIVER_PATH}"
         p2 = subprocess.Popen(cr_cmd, shell=True, preexec_fn=os.setsid)
+        print("command receiver started")
         self.cr_process.append(p2)
         # wait for the processes to complete
         while True:
-            if p1.poll() is not None:
-                break  
+            # if the stream is not streaming
+            time.sleep(1)
         p2.wait()
         print("stream and command receiver terminated")
         self.is_streaming = False
 
         
-    if __name__ == '__main__':
-        robot = RunRobot()
-        robot.main()
+
+robot = RunRobot()
+robot.main()
