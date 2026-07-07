@@ -4,41 +4,37 @@ import cv2
 import numpy as np
 import time
 
-class Reciver:
+class Receiver:
     def __init__(self):
         self.data = b""
         self.is_connect = False 
-        # host and port
-        self.host = '0.0.0.0'
-        self.port = 5000
-        self.conn = None
+        self.ip = '192.168.137.148'
         # connect
-        con = self.connect()
-        while con == False:
-            con = self.connect()
+        self.connect_attempts = 0
+        self.connect(self.ip)
 
-    def connect(self): # connection
+    def connect(self , ip): # connection
         # making socket
         try:
             print("making socket !")
-            self.sock = socket.socket(socket.AF_INET , socket.SOCK_STREAM)
-            print("done")
-            self.sock.bind((self.host , self.port))
-            self.sock.listen()
-            print("listening !")
-            self.conn, addr = self.sock.accept()
-            print(f"connected by ({addr})")
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            print('Done !')
+            self.sock.settimeout(3)
+            self.sock.connect((ip, 5000))
+            print(f"connected by ({ip})")
+            self.is_connect = True
             return True
         except:
             print("failed to connect !!")
-            self.conn.close()
             self.sock.close()
-            time.sleep(4)
+            self.connect_attempts += 1
+            if self.connect_attempts < 4:
+                self.connect(ip)
+            time.sleep(2)
             
 
     def recv(self): # receive the stram part by part
         try:
-            print('try to receive !!')
             while True:
                 # 1. Search for JPEG markers in buffer
                 start = self.data.find(b'\xff\xd8')
@@ -56,7 +52,7 @@ class Reciver:
                 
                 # 2. Need more data
                 try:
-                    chunk = self.conn.recv(4096)
+                    chunk = self.sock.recv(4096)
                     if not chunk:
                         print("Connection lost")
                         return None
@@ -66,17 +62,19 @@ class Reciver:
                     continue
                 except Exception as e:
                     print(f"Socket error: {e}")
+                    self.reconnect()
                     return None
         except Exception as e:
+            if self.sock:
+                self.sock.close()
+                self.sock = None
             print(f"Error in recv: {e}")
             return None
 
     def disconnect(self): # disconnect the connection
         self.is_connect = False
-        if self.conn:
-            self.conn.close()
-            print("connection disconnected")
-        if self.sock:
+        self.connect_attempts = 0
+        if self.sock: # close the socket
             self.sock.close()
             print("socket disconnected")
 
@@ -86,11 +84,9 @@ class Reciver:
         else:
             return False
 
-    def run(self): # run the reciver
-        self.listen()
-        while self.is_connect:
-            frame = self.recv()
-            if frame is not None:
-                return frame
-            else:
-                return None
+    def reconnect(self): # reconnect the connection
+        self.disconnect() # disconnect
+        # reconnect
+        while not self.connect(self.ip):
+            print("Retrying...")
+            time.sleep(2)
