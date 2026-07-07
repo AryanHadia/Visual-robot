@@ -7,49 +7,34 @@ class CommandSender:
         self.error_log = []
         self.is_connected = False
         self.port = 5001
-        self.ip = '0.0.0.0' # every
+        self.ip = '192.168.137.148' # raspi ip
         # command saving file
         self.file = open("commands.txt", "a")
         self.connection_Attempt = 0 # number of times it tried to connect
         # connect to the robot
-        self.connection()
+        self.connection(ip=self.ip, host=self.port)
 
-    def connection(self): # connecting to raspi
+    def connection(self , ip , host): # connecting to raspi
         try:
-            while self.connection_Attempt < 3:
-                # connect
-                self.socket = socket.socket(socket.AF_INET , socket.SOCK_STREAM)
-                print("Making socket !")
-                self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # allow to reuse the address
-                print("Done")
-                self.socket.bind((self.ip , self.port))
-                self.socket.listen(1)
-                print("listening !")
-                self.conn, addr = self.socket.accept()
-                self.is_connected = True # its connected
-                print(f"connected to {addr}")
-                self.connection_Attempt = 0
-                break
-        except Exception as e: # if failed to connect
-            self.connection_Attempt += 1
-            print(f'Failed to connect error: {e}')
-            self.error_log.append(f'commandsender / Failed to connect error: {e}')
-            self.is_connected = False
+            self.socket = socket.socket(socket.AF_INET , socket.SOCK_STREAM)
+            self.socket.connect((ip , host))
+            self.is_connected = True
+            print(f"connected to {ip}:{host}")
+        except Exception as e:
+            print(f"error connecting: {e}")
 
     def send(self , command): # command sender
         try:
-            self.conn.sendall(command.encode()) # send the command to robot
+            self.socket.sendall(command.encode()) # send the command to robot
             self.com_saver(command=command)
         except Exception as e:
             print(f"commandsender / Failed to send the command. error = {e}")
             self.error_log.append(f"commandsender / Failed to send the command. error = {e}")
            
             if not self.con_check():
-                self.close()
-                self.is_connected = False
-                self.connection()
+                self.reconnect()
             try:
-                self.conn.sendall(command.encode())
+                self.socket.sendall(command.encode())
                 self.com_saver(command=command)
             except Exception as e:
                 print(f"commandsender / Failed to send the command. error = {e}")
@@ -64,9 +49,6 @@ class CommandSender:
     def close(self): # close all the programs
         try:
             # close the connection
-            if hasattr(self, "conn"):
-                self.conn.close()
-            # close the socket
             if hasattr(self, "socket"):
                 self.socket.close()
             # close the command saving file
@@ -77,14 +59,14 @@ class CommandSender:
             self.error_log.append(f"commandsender / Failed to close the connection. error = {e}")
             pass
 
-    def restart(self): # restart the connection
+    def reconnect(self): # restart the connection
         self.close()
         self.is_connected = False
         self.connection_Attempt = 0
-        self.connection()
+        self.connection(ip=self.ip, host=self.port)
 
     def con_check(self): # check if its connected
-        return (self.is_connected and hasattr(self, "conn"))
+        return self.is_connected and hasattr(self,"socket")
 
     def save_error(self): # save the error log in the txt file
         with open("error_log.txt", "w") as f:
