@@ -61,32 +61,29 @@ class CommandReceive:
 
 
     # arduino connection
-    def find_ar(self): # find the arduino port
-        for port in serial.tools.list_ports.comports():
-            if "Arduino" in port.description: # arduino port found
-                return port.device
-            elif "USB" in port.description: # usb port found
-                return port.device
-        return None
-
     def connect_arduino(self): # try to connect arduino with founded port
-        while not self.arduino_is_con:
-            port = self.find_ar()
-            if port is None or self.ar_attempt > 3:
-                port = input("please input the port of the arduino: ")
-            try:
-                self.arduino = serial.Serial(port, 9600, timeout=1)
-                self.arduino_is_con = True
-                self.ar_attempt = 0
-                print("connected to arduino")
-                return
-            except Exception as e:
-                self.ar_attempt += 1
-                print(f"failed to connect to arduino: {e}")
-                if self.ar_attempt > 3:
-                    raise Exception("failed to connect to arduino after multiple attempts")
+        try:
+            ports = ['/dev/ttyACM0' , '/dev/ttyUSB0']
+            if self.ar_attempt > 3: # if the connection attempt is more than 3 times
+                raise Exception("failed to connect to arduino after multiple attempts")
+            # try to connect to arduino
+            for port in ports:
+                try:
+                    self.arduino = serial.Serial(port, 9600, timeout=1)
+                    break
+                except:
+                    continue
+            self.arduino_is_con = True
+            self.ar_attempt = 0
+            print("connected to arduino !")
+            return
+        except Exception as e:
+            self.ar_attempt += 1
+            print(f"failed to connect to arduino: {e}")
+            if self.ar_attempt > 3:
+                raise Exception("failed to connect to arduino after multiple attempts")
 
-    def send_command(self, command): # send command to Arduino
+    def send_command(self, command): # send command to Arduino 
         """
         send command to Arduino
         """
