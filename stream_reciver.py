@@ -52,7 +52,7 @@ class Receiver:
                 
                 # 2. Need more data
                 try:
-                    chunk = self.sock.recv(4096)
+                    chunk = self.sock.recv(16384)
                     if not chunk:
                         print("Connection lost")
                         return None
