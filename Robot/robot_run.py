@@ -54,7 +54,7 @@ class RunRobot:
 
     def main(self): # start the stream
         print(f"starting stream. camera is on port {self.stream_port}") 
-        stream_cmd = f"ffmpeg -f v4l2 -framerate 15 -video_size 640x480 -i {self.Camera_Device} -f mjpeg - 2>/dev/null | nc -l -p {self.stream_port}"
+        stream_cmd = f"ffmpeg -fflags nobuffer -flags low_delay -f v4l2 -framerate 30 -video_size 640x480 -input_format mjpeg -i /dev/video0 -an -f mjpeg -q:v 5 - 2>/dev/null | nc -l -p {self.stream_port}"
         p1 = subprocess.Popen(stream_cmd, shell=True, preexec_fn=os.setsid)
         self.cr_process.append(p1)
         print("stream started")
