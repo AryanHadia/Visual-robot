@@ -15,27 +15,23 @@ class CommandReceive:
         self.pc_is_con = False
         self.sock = None
         self.arduino = None
-        # try to connect to pc and arduino
-        self.port = 5001
+        # ip and port
         self.ip = "0.0.0.0"
-        con = self.connect(self.ip , self.port)
-        if con:
-            self.pc_is_con = True
-            self.connect_arduino()
-
+        self.port = 5001
 
     
     # pc connection
     def connect(self , ip , port):
         try:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.sock.bind((ip, port))
             self.sock.listen(1)
             print("Waiting for client...")
             self.conn, self.addr = self.sock.accept()
-            self.conn.settimeout(5)
+            self.conn.settimeout(5) # 
             print(f"connected by {self.addr}")
+            self.pc_is_con = True
+            self.pc_attempt = 0
             return True
         except :
             return False
@@ -46,24 +42,21 @@ class CommandReceive:
         """
         try:
             if self.conn is not None: # if the connection is established
-                self.sock.settimeout(5)
-                data = self.conn.recv(1024)
-                if not data:
-                    print("Client disconnected")
-                    self.reconnect() # reconnect
+                data = self.conn.recv(1024) # receive the command from pc
+
+                if not data: # if no data received
                     return None
+
                 return data.decode().strip()
         except Exception as e:
             print(f"error receiving command: {e}")
-            self.conn.close()
-            self.reconnect() # reconnect
             return None
 
 
     # arduino connection
     def connect_arduino(self): # try to connect arduino with founded port
         try:
-            ports = ['/dev/ttyACM0' , '/dev/ttyUSB0']
+            ports = ['/dev/ttyACM0' , '/dev/ttyUSB0'] # Ardunino portes
             if self.ar_attempt > 3: # if the connection attempt is more than 3 times
                 raise Exception("failed to connect to arduino after multiple attempts")
             # try to connect to arduino
@@ -91,43 +84,54 @@ class CommandReceive:
             self.arduino.write(command.encode())
             print(f"sent command: {command}")
     
+
     # closing all connections
     def close_all(self):
         """
         close all connections
         """
-        try:
-            if self.conn is not None: # close connection
-                self.conn.close()
-            if self.sock is not None: # close socket
-                self.sock.close()
-        except Exception as e:
-            print(f"failed to close conn: {e}")
-        try:
-            if self.arduino is not None:
-                self.arduino.close()
-        except Exception as e:
-            print(f"failed to close arduino: {e}")
-        print("all connections closed")
-
+        if self.conn is not None: # closing the connection
+            self.conn.close()
+            self.conn = None
+            print("conn closed")
+        if self.sock is not None: # closing the socket
+            self.sock.close()
+            self.sock = None
+            print("sock closed")
+        if self.arduino is not None: # closing the Arduino
+            self.arduino.close()
+            self.arduino = None
+            print("arduino closed")
     
     # run the command receive
     def run(self):
-        while True:
-            command = self.receive_command()
-            if command is None:
-                continue
-            if command is not None:
-                if command == "exit":
-                    self.close_all()
-                    break
-                print(f"received command: {command}")
-                self.send_command(command) # send command to arduino
-        
-    """
-    run the command receive
+        # connecting to the computer
+        self.connect(self.ip, self.port) # Connecting
+        if self.pc_is_con is True: # if connected
+            self.connect_arduino()
+            if self.arduino_is_con is True:
+                print("connected to arduino !")
+            else: # if failed to connecting to the Arduino
+                print("failed to connect to arduino !")
+                return False
+        else: # if not connected
+            print("failed to connect to pc !")
+            return False
 
-    """
+
+        print("Done !")
+        while True:
+            command = self.receive_command() # receive the command
+            if command is None: # if no command received
+                continue
+             
+            if command == "exit": # if the command is exit
+                self.close_all()
+                break
+
+            print(f"received command: {command}")
+            self.send_command(command) # send command to arduino
+
 
     # reconnect the connections
     def reconnect(self):
@@ -137,5 +141,6 @@ class CommandReceive:
             self.connect_arduino()
         print("reconnected the connections")
 
-CommandReceive = CommandReceive()
-CommandReceive.run()
+if __name__ == "__main__": # if the program is run directly
+    CommandReceive = CommandReceive()
+    CommandReceive.run()
