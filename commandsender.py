@@ -7,7 +7,7 @@ class CommandSender:
         self.error_log = []
         self.is_connected = False
         self.port = 5001
-        self.ip = '192.168.1.57' # raspi ip
+        self.ip = None # Here you should enter your ip
         # command saving file
         self.file = open("commands.txt", "a")
         self.connection_Attempt = 0 # number of times it tried to connect
