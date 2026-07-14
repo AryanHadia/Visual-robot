@@ -8,7 +8,7 @@ class Receiver:
     def __init__(self):
         self.data = b""
         self.is_connect = False 
-        self.ip = '192.168.137.148'
+        self.ip = None # here you should enter your ip
         # connect
         self.connect_attempts = 0
         self.connect(self.ip)
