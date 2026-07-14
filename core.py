@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
 from stream_reciver import Receiver
-import random
 from command import Commands 
 from tracking import Tracker
 from datetime import datetime
@@ -42,6 +41,7 @@ class Core: # main core
         elif option == 'QRcode': # QRcode tracking
             found , data , center_x , points = self.QRcode(frame)
             if found == False: # if no QRcode found
+                self.commands.sleep_mode(lcd_text="Sleeping !!")
                 return None , None
             # if QRcode found
             if found:
@@ -69,11 +69,9 @@ class Core: # main core
         # if QRcode found,
         if points is not None and data != '': # if a QRcode found
             self.log.append(f"{datetime.now()} - QRcode found: {data}")
+            print(f"QRcode: {data}")
             found = True
             points = points.astype(int)
-            for i in range(4):
-                # drawing the QRcode border
-                cv2.line(frame , tuple(points[i][0]) , tuple(points[(i+1)%4][0]) , (0 , 255 , 0) , 2)
 
             # calculating the center of QRcode
             center = np.mean(points[0], axis=0)
