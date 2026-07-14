@@ -7,20 +7,27 @@ class CommandSender:
         self.error_log = []
         self.is_connected = False
         self.port = 5001
-        self.ip = '192.168.137.148' # raspi ip
+        self.ip = '192.168.1.57' # raspi ip
         # command saving file
         self.file = open("commands.txt", "a")
         self.connection_Attempt = 0 # number of times it tried to connect
-        # connect to the robot
+        # connect 
         self.connection(ip=self.ip, host=self.port)
 
     def connection(self , ip , host): # connecting to raspi
         try:
+            print("sender: connecting to robot...")
             self.socket = socket.socket(socket.AF_INET , socket.SOCK_STREAM)
+            print("sender: socket created successfully")
             self.socket.connect((ip , host))
             self.is_connected = True
             print(f"connected to {ip}:{host}")
         except Exception as e:
+            try:
+                self.socket.close()
+                self.socket = None
+            except:
+                pass
             print(f"error connecting: {e}")
 
     def send(self , command): # command sender
@@ -32,6 +39,7 @@ class CommandSender:
             self.error_log.append(f"commandsender / Failed to send the command. error = {e}")
            
             if not self.con_check():
+                self.is_connected = False
                 self.reconnect()
             try:
                 self.socket.sendall(command.encode())
@@ -51,6 +59,7 @@ class CommandSender:
             # close the connection
             if hasattr(self, "socket"):
                 self.socket.close()
+                self.socket = None
             # close the command saving file
             self.connection_Attempt = 0
             self.is_connected = False
@@ -60,13 +69,22 @@ class CommandSender:
             pass
 
     def reconnect(self): # restart the connection
+        self.connection_Attempt += 1
         self.close()
         self.is_connected = False
-        self.connection_Attempt = 0
-        self.connection(ip=self.ip, host=self.port)
+        for i in range(3):
+            self.connection(ip=self.ip, host=self.port)
+            if self.con_check():
+                break
+        else:
+            self.close()
 
     def con_check(self): # check if its connected
-        return self.is_connected and hasattr(self,"socket")
+        try:
+            self.socket.getpeername()
+            return True
+        except:
+            return False
 
     def save_error(self): # save the error log in the txt file
         with open("error_log.txt", "w") as f:
@@ -76,3 +94,4 @@ class CommandSender:
 
     def file_close(self): # close the command saving file
         self.file.close()
+        
