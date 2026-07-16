@@ -43,7 +43,7 @@ The Raspberry Pi handles image processing and communication, while the Arduino c
 
 PC:
 - OpenCV image processing
-- Object/QR detection
+- Face/Object/QR detection
 - Decision making
 
 Raspberry Pi:
@@ -54,4 +54,3 @@ Raspberry Pi:
 Arduino:
 - Servo control
 - LCD control
-- Motor control
