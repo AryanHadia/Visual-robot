@@ -1,132 +1,141 @@
+// the arduino portgram
 
-int echo = 12;
-int trig = 11 ;
+int servo_pin = 3;
+int led = 4;
+String last_text;
 
-int m1p1 = 3;
-int m1p2 = 5;
-int m2p1 = 6;
-int m2p2 = 9;
-int CL = 4;
-int motor_speed;
-int scan_speed;
-int dist;
+String data;
 
+//// importing the servo library
+#include <Servo.h>
+// importing the ic2 lcd library
+#include <LiquidCrystal_I2C.h>
+// Initialize LCD with I2C address, columns, and rows
+LiquidCrystal_I2C lcd(0x27, 16, 2);
 
-// geting distance
-int getDistance() {
-    digitalWrite(trig, LOW);
-    delayMicroseconds(2);
-    digitalWrite(trig, HIGH);
-    delayMicroseconds(10);
-    digitalWrite(trig, LOW);
-    
-    long duration = pulseIn(echo, HIGH);
-    int distance = duration * 0.034 / 2;
-    
-    if (distance == 0) distance = 100;
-    if (distance > 100) distance = 100;
-    
-    return distance;
+Servo servo;
+
+void setup() {
+  // put your setup code here, to run once:
+  pinMode(led, OUTPUT);
+  Serial.begin(9600);
+  Serial.setTimeout(50);
+  servo.attach(servo_pin);
+  servo.write(90); // 90 degrees (resetting it)
+  // initializing the lcd
+  lcd.begin(16, 2);
+  lcd.print("Hello world!");
+  delay(1000);
+  lcd.setCursor(0, 1);
+  lcd.print("waiting");
+  last_text = "waiting";
 }
-
-
-void setup() { // adruino setup
-    motor_speed = 160;
-    scan_speed = 150;
-    Serial.begin(9600);
-    // pinmodes
-    pinMode(echo, INPUT);
-    pinMode(trig, OUTPUT);
-    pinMode(m1p1, OUTPUT);
-    pinMode(m1p2, OUTPUT);
-    pinMode(m2p1, OUTPUT);
-    pinMode(m2p2, OUTPUT);
-    pinMode(CL, OUTPUT);
-    stop(); // sttopign robot
-    delay(500);
-    Serial.println("READY");   
-}
-
-
 
 void loop() {
-    dist = getDistance();
-    if (Serial.available() > 0) {
-        char cmd = Serial.read();
-        while (Serial.available()) Serial.read();
-  
-        switch (cmd) {
-            case 'F': forward(); break;
-            case 'B': backward(); break;
-            case 'R': turnRight(); break;
-            case 'L': turnLeft(); break;
-            case 'S': stop(); break;
-            case 'E': scanRight(); break;   
-            case 'W': scanLeft(); break;    
-            case 'N': lightOn(); break;     
-            case 'M': lightOff(); break;    
+
+  if (Serial.available()) {
+
+    data = Serial.readStringUntil('\n');
+
+    int separator = data.indexOf('|');
+     
+    // check if the command is valid
+    if (command == "") {
+        continue;
+    }
+    if (separator != -1) {
+
+      String command = data.substring(0, separator);
+      String lcdText = data.substring(separator + 1);
+
+      Serial.print("Command: ");
+      Serial.println(command);
+
+      Serial.print("LCD: ");
+      Serial.println(lcdText);
+
+      // robot control
+      if (command == "L") {
+        // turn left
+        left();
+      }
+      else if (command == "R") {
+        // turn right
+        right();
+      }
+      else if (command == "S") {
+        // Reset the robot
+        reset();
+      }
+      else if (command == "C") {
+        // recenter the robot
+        recenter();
+      }
+      else if (command == "P") {
+        // light on
+        light();
+      }
+      else if (command == "O") {
+        // light off
+        light_off();
+      }
+
+      // lcd control
+      lcd_print(lcdText);
+
+    }
+  }
+}
+
+
+void lcd_print(String text) {
+    if (text != last_text && text != "") {
+        last_text = text;
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print(text);
+    }
+}
+
+
+void right() {
+    // turn the servo right for 20 degrees
+    // getting the current position
+    int current_pos = servo.read();
+    servo.write(constrain(current_pos + 20,0,180));
+}
+
+void left() {
+    // turn the servo left for 20 degrees
+    // getting the current position
+    int current_pos = servo.read();
+    servo.write(constrain(current_pos - 20,0,180));
+}
+
+void recenter() {
+    int current_pos = servo.read();
+    if (current_pos > 93) {
+        for (int i = current_pos; i > 90; i--) {
+            servo.write(i);
+            delay(100);
+        }
+    }
+    else if (current_pos < 87) {
+        for (int i = current_pos; i < 90; i++) {
+            servo.write(i);
+            delay(100);
         }
     }
 }
 
-void forward() {
-    if (dist < 20) { //stop
-        return;
-    }
-    else {
-      analogWrite(m1p1, motor_speed);
-      analogWrite(m1p2, 0);
-      analogWrite(m2p1, motor_speed);
-      analogWrite(m2p2, 0);
-    } 
+void reset() {
+    servo.write(90); // 90 degrees (resetting it)
 }
 
-void backward() {
-    analogWrite(m1p1, 0);
-    analogWrite(m1p2, motor_speed);
-    analogWrite(m2p1, 0);
-    analogWrite(m2p2, motor_speed);
+void light() {
+    digitalWrite(led, HIGH);
 }
 
-void stop() {
-    analogWrite(m1p1, 0);
-    analogWrite(m1p2, 0);
-    analogWrite(m2p1, 0);
-    analogWrite(m2p2, 0);
-}
-
-void turnRight() {
-    analogWrite(m1p1, motor_speed);
-    analogWrite(m1p2, 0);
-    analogWrite(m2p1, 0);
-    analogWrite(m2p2, scan_speed);
-}
-
-void turnLeft() {
-    analogWrite(m1p1, 0);
-    analogWrite(m1p2, scan_speed);
-    analogWrite(m2p1, motor_speed);
-    analogWrite(m2p2, 0);
-}
-
-void scanLeft() {
-    analogWrite(m1p1, 0);
-    analogWrite(m1p2, 0);
-    analogWrite(m2p1, scan_speed);
-    analogWrite(m2p2, 0);
-}
-
-void scanRight() {
-    analogWrite(m1p1, scan_speed);
-    analogWrite(m1p2, 0);
-    analogWrite(m2p1, 0);
-    analogWrite(m2p2, 0);
-}
-
-void lightOn() {
-    digitalWrite(CL, HIGH);
-}
-
-void lightOff() {
-    digitalWrite(CL, LOW);
+void light_off() {
+    digitalWrite(led, LOW);
 }
