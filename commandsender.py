@@ -7,12 +7,14 @@ class CommandSender:
         self.error_log = []
         self.is_connected = False
         self.port = 5001
-        self.ip = None # Here you should enter your ip
+        self.ip = '192.168.1.57' # raspi ip
         # command saving file
         self.file = open("commands.txt", "a")
         self.connection_Attempt = 0 # number of times it tried to connect
         # connect 
         self.connection(ip=self.ip, host=self.port)
+        self.last_command = "" # last command sent
+
 
     def connection(self , ip , host): # connecting to raspi
         try:
@@ -31,12 +33,14 @@ class CommandSender:
             print(f"error connecting: {e}")
 
     def send(self , command): # command sender
+        self.last_command = command
         try:
             self.socket.sendall(command.encode()) # send the command to robot
             self.com_saver(command=command)
+            print(f"send: sent command: {command}")
         except Exception as e:
-            print(f"commandsender / Failed to send the command. error = {e}")
-            self.error_log.append(f"commandsender / Failed to send the command. error = {e}")
+            print(f"send: Failed to send the command. error = {e}")
+            self.error_log.append(f"send: Failed to send the command. error = {e}")
            
             if not self.con_check():
                 self.is_connected = False
@@ -61,6 +65,7 @@ class CommandSender:
                 self.socket.close()
                 self.socket = None
             # close the command saving file
+            self.file.close()
             self.connection_Attempt = 0
             self.is_connected = False
         except Exception as e:
