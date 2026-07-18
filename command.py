@@ -13,7 +13,7 @@ class Commands:
 
     def send(self , command , lcd_text): # send the command bt self.ComSender
         try:
-            self.ComSender.send(f'{command},{lcd_text}')
+            self.ComSender.send(f'{command}|{lcd_text}\n')
             return True
         except Exception as e:
             error = f'command / {datetime.now().strftime("%Y-%m-%d %H:%M:%S")} / Failed to send command | Error: {e}'
@@ -60,10 +60,13 @@ class Commands:
             return False
 
     def turn(self , option , lcd_text = None): # turning left and right
+        print(f"command / turning {option}")
         if option == 'L':
-            return self.send('L' , lcd_text)
+            self.send('L' , lcd_text)
+            return True
         elif option == 'R':
-            return self.send('R' , lcd_text)
+            self.send('R' , lcd_text)
+            return True
         else:
             print('Invalid option')
             self.errors.append(f'command / {datetime.now().strftime("%Y-%m-%d %H:%M:%S")} / Invalid option received')
