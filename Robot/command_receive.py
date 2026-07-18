@@ -146,7 +146,6 @@ class CommandReceive:
 
             command = self.receive_command() # receive the command
             if command is False: # if no command received
-                self.reconnect()
                 continue
              
             if command == "exit": # if the command is exit
