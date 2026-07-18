@@ -4,6 +4,7 @@ from stream_reciver import Receiver
 from command import Commands 
 from tracking import Tracker
 from datetime import datetime
+import time
 
 
 class Core: # main core
@@ -18,8 +19,11 @@ class Core: # main core
         self.qr_detector = cv2.QRCodeDetector()
         self.stuck_counter = 0 # counter for the stuck
         self.brightness_factor = 1 # brightness factor for the frame brightness
+        self.is_streaming = False # flag to monitor stream status
         self.errors = []
         self.log = []
+        self.last_qr_data = "" # last QRcode data received
+        self.frame_counter = 0 # counter for the frame received
 
     
     def get_frame(self): # get frame from the camera
@@ -36,8 +40,11 @@ class Core: # main core
         # if frame found,
         frame = cv2.resize(frame , (self.frame_width , self.frame_height))
         
+        # no option
         if option is None:
             return None , None
+
+        # QRcode tracking
         elif option == 'QRcode': # QRcode tracking
             found , data , center_x , points = self.QRcode(frame)
             if found == False: # if no QRcode found
@@ -47,7 +54,9 @@ class Core: # main core
             if found:
                 command = self.tracker.QR_track(center_x)
                 if command is not None: # if command found
-                    self.commands.turn(command , lcd_text=data)
+                    print("2")
+                    self.commands.turn(option=command, lcd_text=data)
+                    print("1")
                     stuck = False # if robot not stuck then continue tracking
                     if command != 'C':
                         stuck = self.stuck_detection(center_x)
@@ -55,11 +64,13 @@ class Core: # main core
                         self.state('stuck' , lcd_text='Stuck :(')
                         return None , None
                     self.QRcode_center_x = center_x
+                    print('3')
                     return found , data
                 return found , data
             else: # if no command found
                 self.state('search' , lcd_text='Searching')
                 return None , None
+
         else:
             return None , None
 
@@ -69,13 +80,16 @@ class Core: # main core
         # if QRcode found,
         if points is not None and data != '': # if a QRcode found
             self.log.append(f"{datetime.now()} - QRcode found: {data}")
-            print(f"QRcode: {data}")
+            if data != self.last_qr_data:
+                print(f"QRcode: {data}")
+            self.last_qr_data = data # update the last QRcode data
             found = True
             points = points.astype(int)
 
             # calculating the center of QRcode
             center = np.mean(points[0], axis=0)
             center_x = int(center[0])
+
 
             return found , data , center_x , points
         else: # if no QRcode found
@@ -144,19 +158,34 @@ class Core: # main core
 
     
     def run(self): # run the program
+        # log the time 
+        self.log.append(f"{datetime.now()} - Program started")
         while True:
-            frame = self.get_frame() # get the frame
-            if frame is None:
-                continue
+            try:
+                # if the stream is not streaming
+                frame = self.get_frame() # get the frame
+                self.frame_counter += 1
+                if frame is None:
+                    continue
 
-            frame = self.brightness(frame)
-            found , data = self.processor(frame , option='QRcode')
-            self.show_frame(frame) # show the frame
-            if cv2.waitKey(1) & 0xFF == ord('q'): # if q is pressed, break the loop
-                break
+                frame = self.brightness(frame)
+                found , data = self.processor(frame , option='QRcode')
+                self.show_frame(frame) # show the frame
+                if cv2.waitKey(1) & 0xFF == ord('q'): # if q is pressed, break the loop
+                    break
+
+            except Exception as e: # if it failed to process the frame
+                self.errors.append(f"Error: {e}")
+                self.log.append(f"Error: {e}")
+                continue
+                
         
-        # save the log and error log
+        # log the time 
+        self.log.append(f"{datetime.now()} - Program terminated")
+        self.log.append(f"Total frames processed: {self.frame_counter}")
+        # save the log
         self.flush_error()
-        self.log_flush()
+        self.log_flush() 
+        # close all windows
         cv2.destroyAllWindows()
             
