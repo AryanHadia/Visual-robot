@@ -33,8 +33,11 @@ class CommandSender:
             print(f"error connecting: {e}")
 
     def send(self , command): # command sender
-        self.last_command = command
         try:
+            if command == self.last_command: # if the command is the same as last command
+                return
+            # try to send the command to the robot
+            self.last_command = command
             self.socket.sendall(command.encode()) # send the command to robot
             self.com_saver(command=command)
             print(f"send: sent command: {command}")
