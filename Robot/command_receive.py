@@ -2,6 +2,7 @@ import socket
 import serial
 import serial.tools.list_ports
 import time
+import datetime
 
 # try to connect to pc for receiving commands and Arduino for sending commands
 
@@ -19,6 +20,7 @@ class CommandReceive:
         # ip and port
         self.ip = "0.0.0.0"
         self.port = 5001
+        self.last_command = ""
 
     
     # pc connection
@@ -59,8 +61,7 @@ class CommandReceive:
                 data = self.conn.recv(1024) # receive the command from pc
                 if not data: # if no data received
                     return False
-                print(f"recv: received command: {data.decode().strip()}")
-
+                print(f"recv: received command: {data.decode().strip()} / {datetime.datetime.now()}")
                 return data.decode().strip()
             except Exception as e:
                 print(f"error receiving command: {e}")
@@ -70,18 +71,17 @@ class CommandReceive:
     # arduino connection
     def connect_arduino(self): # try to connect arduino with founded port
         try:
-            ports = ['/dev/ttyACM0' , '/dev/ttyUSB0'] # Ardunino portes
+            ports = '/dev/ttyACM0' # Ardunino portes
             if self.ar_attempt > 3: # if the connection attempt is more than 3 times
                 raise Exception("failed to connect to arduino after multiple attempts")
             # try to connect to arduino
-            for port in ports:
-                try:
-                    self.arduino = serial.Serial(port, 9600, timeout=1)
-                    self.arduino_is_con = True
-                    print("connected to arduino !")
-                    break
-                except:
-                    continue
+            self.arduino = serial.Serial(ports, 9600, timeout=1)
+            time.sleep(4)
+            self.arduino_is_con = True
+            print(self.arduino.is_open)
+            print(self.arduino.port)
+            print("connected to arduino !")
+
             self.ar_attempt = 0
             return
         except Exception as e:
@@ -96,8 +96,10 @@ class CommandReceive:
         send command to Arduino
         """
         if self.arduino is not None:
-            self.arduino.write(command.encode())
-            print(f"sent command: {command}")
+            packet = (command).encode()
+            print(repr(packet))
+            self.arduino.write(packet)
+            print(f"sent command: {command} / {datetime.datetime.now()}")
     
 
     # closing all connections
@@ -127,7 +129,7 @@ class CommandReceive:
         if self.pc_is_con is True: # if connected
             self.connect_arduino()
             if self.arduino_is_con is True:
-                print("connected to arduino !")
+                pass
             else: # if failed to connecting to the Arduino
                 print("failed to connect to arduino !")
                 return False
@@ -139,21 +141,23 @@ class CommandReceive:
         print("Done !")
         while True:
             # check if connection is lost
+
             if self.conn is None:
                 print("connection lost, reconnecting...")
-                self.reconnect()
                 continue
 
             command = self.receive_command() # receive the command
             if command is False: # if no command received
                 continue
-             
+            
             if command == "exit": # if the command is exit
                 self.close_all()
                 break
 
-            print(f"received command: {command}")
-            self.send_command(command) # send command to arduino
+            if command != self.last_command: # if the command is not the same as last command
+                self.last_command = command
+                self.send_command(command) # send command to arduino
+
 
 
     # reconnect the connections
