@@ -23,7 +23,8 @@ void setup() {
   servo.attach(servo_pin);
   servo.write(90); // 90 degrees (resetting it)
   // initializing the lcd
-  lcd.begin(16, 2);
+  lcd.init();
+  lcd.backlight();
   lcd.print("Hello world!");
   delay(1000);
   lcd.setCursor(0, 1);
@@ -35,14 +36,12 @@ void loop() {
 
   if (Serial.available()) {
 
-    data = Serial.readStringUntil('\n');
+    data = Serial.readStringUntil('/');
 
     int separator = data.indexOf('|');
      
     // check if the command is valid
-    if (command == "") {
-        continue;
-    }
+
     if (separator != -1) {
 
       String command = data.substring(0, separator);
@@ -51,8 +50,6 @@ void loop() {
       Serial.print("Command: ");
       Serial.println(command);
 
-      Serial.print("LCD: ");
-      Serial.println(lcdText);
 
       // robot control
       if (command == "L") {
@@ -71,7 +68,7 @@ void loop() {
         // recenter the robot
         recenter();
       }
-      else if (command == "P") {
+      else if (command == "P") {    
         // light on
         light();
       }
@@ -79,12 +76,19 @@ void loop() {
         // light off
         light_off();
       }
+      else if (command == "Z") {
+        // close the robot
+        close();
+      }
 
       // lcd control
       lcd_print(lcdText);
 
     }
   }
+  else{
+    Serial.println("Invalid packet");
+}
 }
 
 
@@ -138,4 +142,10 @@ void light() {
 
 void light_off() {
     digitalWrite(led, LOW);
+}
+
+void close() {
+    Serial.println("close");
+    reset();
+    lcd.clear();
 }
