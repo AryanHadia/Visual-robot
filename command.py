@@ -10,10 +10,11 @@ class Commands:
         self.errors = []
         self.ComSender = CS()
         self.tracker_ = Tracker()
+        self.last_commandB
 
     def send(self , command , lcd_text): # send the command bt self.ComSender
         try:
-            self.ComSender.send(f'{command}|{lcd_text}\n')
+            self.ComSender.send(f'{command}|{lcd_text}/\n')
             return True
         except Exception as e:
             error = f'command / {datetime.now().strftime("%Y-%m-%d %H:%M:%S")} / Failed to send command | Error: {e}'
@@ -60,15 +61,18 @@ class Commands:
             return False
 
     def turn(self , option , lcd_text = None): # turning left and right
-        print(f"command / turning {option}")
+        print(f"command / {lcd_text} / turning {option}")
         if option == 'L':
             self.send('L' , lcd_text)
             return True
         elif option == 'R':
             self.send('R' , lcd_text)
             return True
+        elif option == 'C':
+            self.send(None , lcd_text)
+            return True
         else:
-            print('Invalid option')
+            print('command: Invalid option')
             self.errors.append(f'command / {datetime.now().strftime("%Y-%m-%d %H:%M:%S")} / Invalid option received')
 
     def search(self , lcd_text = None):
