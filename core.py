@@ -54,9 +54,7 @@ class Core: # main core
             if found:
                 command = self.tracker.QR_track(center_x)
                 if command is not None: # if command found
-                    print("2")
                     self.commands.turn(option=command, lcd_text=data)
-                    print("1")
                     stuck = False # if robot not stuck then continue tracking
                     if command != 'C':
                         stuck = self.stuck_detection(center_x)
@@ -64,7 +62,6 @@ class Core: # main core
                         self.state('stuck' , lcd_text='Stuck :(')
                         return None , None
                     self.QRcode_center_x = center_x
-                    print('3')
                     return found , data
                 return found , data
             else: # if no command found
@@ -98,12 +95,12 @@ class Core: # main core
 
     
     def stuck_detection(self , center_x): # found out if camera stuck
-        if abs(center_x - self.QRcode_center_x) < 3:
+        if abs(center_x - self.QRcode_center_x) < 10:
             self.stuck_counter += 1
         else:
             self.stuck_counter = 0
 
-        if self.stuck_counter > 20:
+        if self.stuck_counter > 500:
             return True
         else:
             return False
