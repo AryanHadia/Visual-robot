@@ -95,11 +95,13 @@ class CommandReceive:
         """
         send command to Arduino
         """
-        if self.arduino is not None:
+        try:
             packet = (command).encode()
             print(repr(packet))
             self.arduino.write(packet)
             print(f"sent command: {command} / {datetime.datetime.now()}")
+        except Exception as e :
+            print
     
 
     # closing all connections
@@ -149,14 +151,14 @@ class CommandReceive:
             command = self.receive_command() # receive the command
             if command is False: # if no command received
                 continue
+            elif command is not False:
+                print("fuck")
+                self.send_command(command=command)
+                print("fuck 2")
             
             if command == "exit": # if the command is exit
                 self.close_all()
                 break
-
-            if command != self.last_command: # if the command is not the same as last command
-                self.last_command = command
-                self.send_command(command) # send command to arduino
 
 
 
