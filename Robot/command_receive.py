@@ -152,9 +152,7 @@ class CommandReceive:
             if command is False: # if no command received
                 continue
             elif command is not False:
-                print("fuck")
                 self.send_command(command=command)
-                print("fuck 2")
             
             if command == "exit": # if the command is exit
                 self.close_all()
