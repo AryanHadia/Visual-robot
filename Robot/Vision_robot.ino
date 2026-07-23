@@ -29,7 +29,8 @@ void setup() {
   delay(1000);
   lcd.setCursor(0, 1);
   lcd.print("waiting");
-  last_text = "waiting";
+  delay(1000);
+  lcd.clear();
 }
 
 void loop() {
@@ -86,19 +87,15 @@ void loop() {
 
     }
   }
-  else{
-    Serial.println("Invalid packet");
 }
-}
+
 
 
 void lcd_print(String text) {
-    if (text != last_text && text != "") {
-        last_text = text;
         lcd.clear();
         lcd.setCursor(0, 0);
         lcd.print(text);
-    }
+    
 }
 
 
