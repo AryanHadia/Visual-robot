@@ -10,11 +10,17 @@ class Commands:
         self.errors = []
         self.ComSender = CS()
         self.tracker_ = Tracker()
-        self.last_commandB
+        self.last_command = "" # last command sent
 
     def send(self , command , lcd_text): # send the command bt self.ComSender
         try:
+            if command == self.last_command: # if the command is the same as last command
+                return False
+            elif command != self.last_command:
+                print(f"command / {lcd_text} / {command}")
+                print('1')
             self.ComSender.send(f'{command}|{lcd_text}/\n')
+            self.last_command = command # update the last command
             return True
         except Exception as e:
             error = f'command / {datetime.now().strftime("%Y-%m-%d %H:%M:%S")} / Failed to send command | Error: {e}'
@@ -27,9 +33,9 @@ class Commands:
         # make a ramdom direction to exape the robot
         direction = random.choice(['L' , 'R'])
         try:
-            self.send(direction , lcd_text) # send the direction to the robot
+            self.send(command=direction , lcd_text=lcd_text) # send the direction to the robot
             time.sleep(1)
-            self.send('S' , lcd_text) # send the reset command to the robot
+            self.send(command='S' , lcd_text=lcd_text) # send the reset command to the robot
         except Exception as e:
             error = f'command / {datetime.now().strftime("%Y-%m-%d %H:%M:%S")} / Failed to send stuck command | Error: {e}'
             print(error)
@@ -37,8 +43,6 @@ class Commands:
             return False
         return True
 
-    def sleep_mode(self , lcd_text = None): # sleep when it's no use
-        return self.send('S' , lcd_text)
 
     def search_mode(self , lcd_text = None): # turning the servo motor to left and right
         # turn right 20 deg
@@ -53,7 +57,7 @@ class Commands:
         except: # and if it failed
             return False
     
-    def sleep_mode(self , lcd_text): # sleep mode
+    def sleep_mode(self , lcd_text = None): # sleep mode
         try:
             self.send(command='S' , lcd_text=lcd_text)
             return True
@@ -61,15 +65,14 @@ class Commands:
             return False
 
     def turn(self , option , lcd_text = None): # turning left and right
-        print(f"command / {lcd_text} / turning {option}")
         if option == 'L':
-            self.send('L' , lcd_text)
+            self.send(command='L' , lcd_text=lcd_text)
             return True
         elif option == 'R':
-            self.send('R' , lcd_text)
+            self.send(command='R' , lcd_text=lcd_text)
             return True
         elif option == 'C':
-            self.send(None , lcd_text)
+            self.send(command=None , lcd_text=lcd_text)
             return True
         else:
             print('command: Invalid option')
@@ -80,13 +83,13 @@ class Commands:
         search_step = 10 # 20 deg
         try:
             for _ in range(search_step):
-                self.send('R' , lcd_text)
+                self.send(command='R' , lcd_text=lcd_text)
                 time.sleep(0.5)
             self.send('C' , lcd_text) # send the recenter command to the robot
             for _ in range(search_step):
-                self.send('L' , lcd_text)
+                self.send(command='L' , lcd_text=lcd_text)
                 time.sleep(0.5)
-            self.send('C' , lcd_text) # send the recenter command to the robot
+            self.send(command='C' , lcd_text=lcd_text) # send the recenter command to the robot
         except Exception as e:
             error = f'command / {datetime.now().strftime("%Y-%m-%d %H:%M:%S")} / Failed to send search command | Error: {e}'
             print(error)
