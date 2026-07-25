@@ -5,6 +5,7 @@ from command import Commands
 from tracking import Tracker
 from datetime import datetime
 import time
+from insightface.app import FaceAnalysis
 
 
 class Core: # main core
@@ -24,8 +25,11 @@ class Core: # main core
         self.log = []
         self.last_qr_data = "" # last QRcode data received
         self.frame_counter = 0 # counter for the frame received
+        self.face_frame_counter = 0
+        self.options = ['QRcode' , 'face']
+        self.app = FaceAnalysis()
+        self.app.prepare(ctx_id=0)
 
-    
     def get_frame(self): # get frame from the camera
         """
         the get_frame function get the frame from the camera
@@ -33,6 +37,7 @@ class Core: # main core
         return self.receive.recv()
 
 
+     # ======= frame processor ========
     def processor(self , frame , option = None): # process the frame
         if frame is None:  # if no frame received
            return None
@@ -52,7 +57,7 @@ class Core: # main core
                 return None , None
             # if QRcode found
             if found:
-                command = self.tracker.QR_track(center_x)
+                command = self.tracker.tracker(center_x)
                 if command is not None: # if command found
                     self.commands.turn(option=command, lcd_text=data)
                     stuck = False # if robot not stuck then continue tracking
@@ -67,6 +72,20 @@ class Core: # main core
             else: # if no command found
                 self.state('search' , lcd_text='Searching')
                 return None , None
+
+        # face detection
+        elif option == 'face': # face detection
+            frame , center_x = self.face_detect(frame)
+            if frame is None: # set to sleep mode
+                self.commands.sleep_mode(lcd_text="Sleeping !!")
+                return None , None
+
+            elif frame is not None: # if face found
+                tracking_command = self.tracker.tracker(center_x)
+                if tracking_command is not None: # if command found
+                    self.commands.turn(option=tracking_command, lcd_text='Tracking face')
+                    return tracking_command , None
+
 
         else:
             return None , None
@@ -94,6 +113,30 @@ class Core: # main core
             return found , None , None , None
 
     
+    def face_detect(self , frame):
+        def face_reconize(frame): # face reconize
+            faces = self.app.get(frame)
+            if len(faces) == 0: # if no face found
+                return None
+            center_x = int((faces[0].bbox[0] + faces[0].bbox[2]) / 2) # find the center of the face rect
+
+            # if face found
+            return faces[0] , center_x
+ 
+
+               # main function
+        try:
+            center_x = None
+            face , center_x = face_reconize(frame)
+            if face is None: # if no face found
+                return None
+            return frame , center_x
+        except Exception as e:
+            self.errors.append(f"Error in face_detect: {e}")
+            return None
+
+    
+    # ======= stuck detection & states ========
     def stuck_detection(self , center_x): # found out if camera stuck
         if abs(center_x - self.QRcode_center_x) < 10:
             self.stuck_counter += 1
@@ -104,7 +147,6 @@ class Core: # main core
             return True
         else:
             return False
-
 
     def state(self , state , lcd_text): # change the state of robot
         states = {
@@ -117,12 +159,13 @@ class Core: # main core
             func(lcd_text=lcd_text)
 
 
+
+    # ======= flushing the logs and errors ========
     def flush_error(self): # saving the error into txt file
         with open('error.txt' , 'a') as f:
             for _ in self.errors:
                 f.write(_ + "\n")
         self.errors.clear()
-
     
     def log_flush(self): # save the log into file
         with open('log.txt' , 'a') as f:
@@ -131,11 +174,13 @@ class Core: # main core
         self.log.clear()
 
 
+    # ======= showing the frame ========
     def show_frame(self , frame): # show the frame in the window
         cv2.imshow('frame' , frame)
         cv2.waitKey(1)
 
 
+    # ======= frame configuration ========
     def brightness(self , frame): # make a desicion to turn the light on or off
         gray = cv2.cvtColor(frame , cv2.COLOR_BGR2GRAY)
         brightness = np.mean(gray)
@@ -154,9 +199,14 @@ class Core: # main core
         return frame
 
     
-    def run(self): # run the program
+    #====================== running the program ======================
+    def run(self , option='QRcode'): # run the program
+        if option not in ['QRcode' , 'face']:
+            print(f"Invalid option: {option}")
+            print('default option: QRcode')
+            option = 'QRcode'
         # log the time 
-        self.log.append(f"{datetime.now()} - Program started")
+        self.log.append(f"{datetime.now()} - Program started / option: {option}")
         while True:
             try:
                 # if the stream is not streaming
@@ -164,19 +214,19 @@ class Core: # main core
                 self.frame_counter += 1
                 if frame is None:
                     continue
-
                 frame = self.brightness(frame)
-                found , data = self.processor(frame , option='QRcode')
+                self.processor(frame=frame , option=option) # process the frame
                 self.show_frame(frame) # show the frame
                 if cv2.waitKey(1) & 0xFF == ord('q'): # if q is pressed, break the loop
                     break
+                
 
             except Exception as e: # if it failed to process the frame
                 self.errors.append(f"Error: {e}")
                 self.log.append(f"Error: {e}")
                 continue
-                
-        
+
+            
         # log the time 
         self.log.append(f"{datetime.now()} - Program terminated")
         self.log.append(f"Total frames processed: {self.frame_counter}")
