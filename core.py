@@ -36,7 +36,10 @@ class Core: # main core
         """
         the get_frame function get the frame from the camera
         """
-        return self.receive.recv()
+        frame = self.receive.recv()
+        self.frame_counter += 1
+        cv2.imshow("frame" , frame)
+        return frame
 
 
     def should_detect(self): # timer for the detection
@@ -84,6 +87,10 @@ class Core: # main core
                 self.center_x = center_x
                 return True
             else:
+                self.data = None
+                self.center_x = None
+                self.faces = 0
+                self.change_state(state='sleep_mode' , lcd_text="No QRcode")
                 return False
 
     
@@ -106,6 +113,9 @@ class Core: # main core
                 self.faces = len(faces)
                 return True
             else:
+                self.center_x = None
+                self.faces = 0
+                self.change_state(state='sleep_mode' , lcd_text="No face")
                 return False
 
     
@@ -170,8 +180,8 @@ class Core: # main core
                 options[option](frame)
 
                 # if frame found,
-                cv2.imshow('frame' , frame) # showing the frame
                 if cv2.waitKey(1) & 0xFF == ord('q'): # if q is pressed, break the loop
+                    self.close_all()
                     break
                 
 
@@ -179,8 +189,10 @@ class Core: # main core
                 self.errors.append(f"Error: {e}")
                 self.log.append(f"Error: {e}")
                 continue
+        self.close_all()
 
-            
+    def close_all(self):
+
         # log the time 
         self.log.append(f"{datetime.now()} - Program terminated")
         self.log.append(f"Total frames processed: {self.frame_counter}")
