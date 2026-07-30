@@ -6,7 +6,7 @@ from tracking import Tracker
 from datetime import datetime
 import time
 from insightface.app import FaceAnalysis
-
+import os
 
 class Core: # main core
     def __init__(self):
@@ -24,20 +24,18 @@ class Core: # main core
         self.log = []
         self.last_qr_data = "" # last QRcode data received
         self.frame_counter = 0 # counter for the frame received
-        self.app = FaceAnalysis()
-        self.app.prepare(ctx_id=0)
         self.last_state = None # last state of the robot
         self.detection_timing = 0 # timing for the detection
         self.data = None
         self.center_x = None
         self.faces = 0
+        self.face_detector = FaceDetector()
 
     def get_frame(self): # get frame from the camera
         """
         the get_frame function get the frame from the camera
         """
         frame = self.receive.recv()
-        self.frame_counter += 1
         cv2.imshow("frame" , frame)
         return frame
 
@@ -62,10 +60,23 @@ class Core: # main core
             return False
 
      # ======= frame processor ========
+    def face_detect(self , frame): # detecting the face
+        try:
+            center_x, person = self.face_detector.detect(frame)
+            command = self.tracker.tracker(center_x=center_x)
+            self.change_state(state='turn' , option=command , lcd_text=center_x)
+            self.log.append(f"Face detect: {center_x}")
+            return True
+        except Exception as e:
+            print(f"Face detect error: {e}")
+            self.errors.append(f"Face detect error: {e}")
+            return False
+        
+
     def Qrcode(self , frame): # detecting the QRcode
         if frame is not None:
             if self.should_detect() is True: # if the detection time is not up
-                data, value,_ = self.qr_detector.detectAndDecode(frame) # detect the QRcode
+                data, points,_ = self.qr_detector.detectAndDecode(frame) # detect the QRcode
             else: 
                 if self.center_x is None:
                     return False
@@ -80,7 +91,7 @@ class Core: # main core
                     self.data = data
                     self.last_qr_data = data
                 # calculating the center of QRcode
-                center = np.mean(value[0], axis=0)
+                center = np.mean(points[0], axis=0)
                 center_x = int(center[0])
                 command = self.tracker.tracker(center_x=center_x)
                 self.change_state(state='turn' , option=command , lcd_text=data)
@@ -92,35 +103,7 @@ class Core: # main core
                 self.faces = 0
                 self.change_state(state='sleep_mode' , lcd_text="No QRcode")
                 return False
-
-    
-    def face_detect(self , frame): # detecting the face
-        if frame is not None:
-            if self.should_detect() is True: # if the detection time is not up
-                faces = self.app.get(frame)
-            else: 
-                if self.center_x is None:
-                    return False
-                command = self.tracker.tracker(center_x=self.center_x)
-                self.change_state(state='turn' , option=command , lcd_text=self.faces)
-                return False
-            # if the face is detected
-            if faces:
-                center_x = int((faces[0].bbox[0] + faces[0].bbox[2]) // 2)
-                command = self.tracker.tracker(center_x=center_x)
-                self.change_state(state='turn' , option=command , lcd_text=str(len(faces)))
-                self.center_x = center_x
-                self.faces = len(faces)
-                return True
-            else:
-                self.center_x = None
-                self.faces = 0
-                self.change_state(state='sleep_mode' , lcd_text="No face")
-                return False
-
-    
-    def object_detect(self , frame): # detecting the object
-        pass
+ 
 
     
     # ======= stuck detection & states ========
@@ -148,16 +131,16 @@ class Core: # main core
         brightness = np.mean(gray)
         if brightness <= 50: # if its dark
             self.brightness_factor = 4  # increasing the frame brightnes
-            frame = cv2.convertScaleAbs(frame , alpha=self.brightness_factor , beta=0)
+            frame = cv2.convertScaleAbs(frame , alpha=self.brightness_factor , beta=100)
         elif 50 < brightness <= 100: # if its not dark
             self.brightness_factor = 3  # decreasing the frame brightnes
-            frame = cv2.convertScaleAbs(frame , alpha=self.brightness_factor , beta=0)
+            frame = cv2.convertScaleAbs(frame , alpha=self.brightness_factor , beta=75)
         elif 100 < brightness <= 150: # if its not dark
             self.brightness_factor = 1.5  # increasing the frame brightnes
-            frame = cv2.convertScaleAbs(frame , alpha=self.brightness_factor , beta=0)
+            frame = cv2.convertScaleAbs(frame , alpha=self.brightness_factor , beta=50)
         else: # if its not dark
             self.brightness_factor = 1  # decreasing the frame brightnes
-            frame = cv2.convertScaleAbs(frame , alpha=self.brightness_factor , beta=0)
+            frame = cv2.convertScaleAbs(frame , alpha=self.brightness_factor , beta=25)
         return frame
 
     
@@ -192,7 +175,7 @@ class Core: # main core
         self.close_all()
 
     def close_all(self):
-
+        self.change_state(state='exit')
         # log the time 
         self.log.append(f"{datetime.now()} - Program terminated")
         self.log.append(f"Total frames processed: {self.frame_counter}")
@@ -201,3 +184,83 @@ class Core: # main core
         self.log_flush() 
         # close all windows
         cv2.destroyAllWindows()
+
+class FaceDetector:
+    def __init__(self):
+        self.app = FaceAnalysis()
+        self.app.prepare(ctx_id=0)
+        self.faces = 0
+        self.folder = 'embeddings'
+        self.tracker = Tracker()
+        self.center_x = None
+        # make the forlder
+        if not os.path.exists(self.folder):
+            os.makedirs(self.folder)
+
+
+    def distance(self , a, b): # calculatuimg the distance bitween two embedding
+            distance = np.linalg.norm(a - b)
+            return distance
+
+
+    def save_embedding (self , embedding , name): # saving the embedding
+        try:
+            np.save(os.path.join('embeddings', name) , embedding)
+            return True
+        except Exception as e:
+            print(f"Error: {e}")
+            return False
+
+
+    def check_for_embedding(self , n_embedding): # check if there is a embedding like the new one
+            # open other embeddings and check
+            files = os.listdir(self.folder) # finding all the files in the folder embeddings
+            dists = []
+            for file in files:
+                embedding = np.load(os.path.join(self.folder, file))
+                dist = self.distance(embedding, n_embedding)
+                dists.append(dist)
+            if len(dists) == 0:
+                return "No embedding found"
+            min_dist = min(dists)
+            print(f"min distance: {min_dist}")
+            if min_dist < 1.2:
+                print("Same embedding found")
+                person = files[dists.index(min(dists))].split('.')[0]
+                return person
+            else:
+                print("No same embedding found")
+                name = input("Enter the name: ")
+                self.save_embedding(n_embedding , name + ".npy")
+                return name
+
+
+    def face_detect(self , frame): # detecting the face               
+
+        # main function for face detection
+        if frame is None:
+            return self.center_x , None
+        faces = self.app.get(frame)
+        # if the face is detected
+        if faces:
+            center_x = int((faces[0].bbox[0] + faces[0].bbox[2]) // 2)
+            self.center_x = center_x
+            face = faces[0]
+            # checking the embedding
+            new_embedding = face.embedding
+            person = self.check_for_embedding(new_embedding)
+            return center_x , person
+        else:
+            self.center_x = None
+            self.faces = 0
+            return None , None
+
+
+
+class ObjectDetector:
+    pass
+
+
+
+class QRCodeDetector:
+    pass
