@@ -5,8 +5,7 @@ This project is a vision-based robot using Raspberry Pi and Arduino.
 The Raspberry Pi handles image processing and communication, while the Arduino controls hardware components such as servo motors and LCD.
 ### Features
 - Find Qr_codes of faces or objects
-- Using a AI model to recognize the objects or ...
-- using a microphone to listen to the user's voice and save the conversation on sql database
+- Recognizing faces by their ebedding
 ### Hardware
 - Raspberry Pi 3
 - Arduino Uno
@@ -33,9 +32,10 @@ The Raspberry Pi handles image processing and communication, while the Arduino c
 - subprocess
 - sys
 - os
+- InsightFace (embedding)
 
 ### Planned features
-- Find Qr_codes of faces or objects
+- Find objects by yolo
 - Using a AI model to recognize the objects or ...
 - using a microphone to listen to the user's voice and save the conversation on sql database
 
