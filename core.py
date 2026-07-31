@@ -7,6 +7,8 @@ from datetime import datetime
 import time
 from insightface.app import FaceAnalysis
 import os
+from database_controller import DataBaseManager
+import random
 
 class Core: # main core
     def __init__(self):
@@ -30,6 +32,8 @@ class Core: # main core
         self.center_x = None
         self.faces = 0
         self.face_detector = FaceDetector()
+        self.face_frame = 0 # for face detect
+
 
     def get_frame(self): # get frame from the camera
         """
@@ -41,7 +45,7 @@ class Core: # main core
 
 
     def should_detect(self): # timer for the detection
-        if self.detection_timing <= 60:
+        if self.detection_timing <= 120:
             self.detection_timing += 1
             return False
         else:
@@ -62,10 +66,12 @@ class Core: # main core
      # ======= frame processor ========
     def face_detect(self , frame): # detecting the face
         try:
-            center_x, person = self.face_detector.detect(frame)
+            if self.should_detect() is False:
+                return False
+            center_x, person = self.face_detector.face_detect(frame)
             command = self.tracker.tracker(center_x=center_x)
-            self.change_state(state='turn' , option=command , lcd_text=center_x)
-            self.log.append(f"Face detect: {center_x}")
+            self.change_state(state='turn' , option=command , lcd_text=person)
+            self.log.append(f"Face detect: {person}")
             return True
         except Exception as e:
             print(f"Face detect error: {e}")
@@ -185,17 +191,17 @@ class Core: # main core
         # close all windows
         cv2.destroyAllWindows()
 
+
 class FaceDetector:
     def __init__(self):
         self.app = FaceAnalysis()
         self.app.prepare(ctx_id=0)
         self.faces = 0
-        self.folder = 'embeddings'
-        self.tracker = Tracker()
         self.center_x = None
-        # make the forlder
-        if not os.path.exists(self.folder):
-            os.makedirs(self.folder)
+        self.data_base = DataBaseManager()
+        self.threshold = 25
+        self.last_number_of_faces = 0
+
 
 
     def distance(self , a, b): # calculatuimg the distance bitween two embedding
@@ -204,45 +210,44 @@ class FaceDetector:
 
 
     def save_embedding (self , embedding , name): # saving the embedding
-        try:
-            np.save(os.path.join('embeddings', name) , embedding)
-            return True
-        except Exception as e:
-            print(f"Error: {e}")
-            return False
+        embedding = embedding.tolist() # convert the embedding to list (json format)
+        self.data_base.add_emb(name , embedding)
 
 
     def check_for_embedding(self , n_embedding): # check if there is a embedding like the new one
-            # open other embeddings and check
-            files = os.listdir(self.folder) # finding all the files in the folder embeddings
-            dists = []
-            for file in files:
-                embedding = np.load(os.path.join(self.folder, file))
-                dist = self.distance(embedding, n_embedding)
-                dists.append(dist)
-            if len(dists) == 0:
-                return "No embedding found"
-            min_dist = min(dists)
-            print(f"min distance: {min_dist}")
-            if min_dist < 1.2:
-                print("Same embedding found")
-                person = files[dists.index(min(dists))].split('.')[0]
-                return person
-            else:
-                print("No same embedding found")
-                name = input("Enter the name: ")
-                self.save_embedding(n_embedding , name + ".npy")
-                return name
+            # get all person from the database
+            smallest_distance = None
+            person = None
+            persons = self.data_base.get_all_emb()
+            # check if there is any person in the database
+            if not persons:
+                print("No person in the database")
+                return None
+            for _ in persons:
+                embedding = np.array(_.Face_embedding, dtype=np.float32)
+                distance = self.distance(embedding , n_embedding) # get distance
+                if distance < self.threshold: # if the distance is less than the threshold
+                    if smallest_distance is None or distance < smallest_distance:
+                        smallest_distance = distance # update the smallest distance
+                        person = _.Name # update the person name
 
+            if smallest_distance is None: # if no person is found
+                self.save_embedding(n_embedding , f'new_person{random.randint(0,1000)}') # save the new embedding
+                return None
+            print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+            print(person)
+            print(smallest_distance)
+            return person
 
-    def face_detect(self , frame): # detecting the face               
-
+    def face_detect(self , frame): # detecting the face               \
         # main function for face detection
         if frame is None:
             return self.center_x , None
         faces = self.app.get(frame)
         # if the face is detected
+        
         if faces:
+            self.last_number_of_faces = len(faces)
             center_x = int((faces[0].bbox[0] + faces[0].bbox[2]) // 2)
             self.center_x = center_x
             face = faces[0]
