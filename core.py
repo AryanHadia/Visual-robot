@@ -68,10 +68,16 @@ class Core: # main core
         try:
             if self.should_detect() is False:
                 return False
-            center_x, person = self.face_detector.face_detect(frame)
+            center_x, persons = self.face_detector.face_detect(frame)
+            print(type(persons))
+            if persons is None:
+                self.change_state(state='sleep_mode' , lcd_text="No face")
+                self.log.append(f"Face detect: No face")
+                return False
             command = self.tracker.tracker(center_x=center_x)
-            self.change_state(state='turn' , option=command , lcd_text=person)
-            self.log.append(f"Face detect: {person}")
+            for person in persons:
+                self.change_state(state='turn' , option=command , lcd_text=person)
+                self.log.append(f"Face detect: {person}")
             return True
         except Exception as e:
             print(f"Face detect error: {e}")
@@ -239,7 +245,8 @@ class FaceDetector:
             print(smallest_distance)
             return person
 
-    def face_detect(self , frame): # detecting the face               \
+
+    def face_detect(self , frame): # detecting the face
         # main function for face detection
         if frame is None:
             return self.center_x , None
@@ -247,14 +254,16 @@ class FaceDetector:
         # if the face is detected
         
         if faces:
+            persons = []
             self.last_number_of_faces = len(faces)
             center_x = int((faces[0].bbox[0] + faces[0].bbox[2]) // 2)
             self.center_x = center_x
-            face = faces[0]
-            # checking the embedding
-            new_embedding = face.embedding
-            person = self.check_for_embedding(new_embedding)
-            return center_x , person
+            for face in faces:
+                # checking the embedding
+                new_embedding = face.embedding
+                person = self.check_for_embedding(new_embedding)
+                persons.append(person) # append the person name to the list
+            return center_x , persons
         else:
             self.center_x = None
             self.faces = 0
